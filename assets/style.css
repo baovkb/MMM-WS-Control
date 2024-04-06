@@ -1,0 +1,36 @@
+.MMM-WS-Control.rectangle {
+    width: 100%;
+    height: 100px;
+    position: relative;
+    border: 1px solid;
+}
+
+.MMM-WS-Control.rectangle.no-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.MMM-WS-Control span {
+    display: inline-block;
+}
+
+.MMM-WS-Control .device-item {
+    width: 50%;
+    margin: 5px;
+    border: 1px solid;
+    border-radius: 2px;
+}
+
+.MMM-WS-Control .device-item .devices-item--active {
+    
+}
+
+.MMM-WS-Control .devices-item-icon {
+
+}
+
+.MMM-WS-Control .devices-item-header {
+
+}
