@@ -1,8 +1,7 @@
 .MMM-WS-Control.rectangle {
-    width: 100%;
-    height: 100px;
     position: relative;
     border: 1px solid;
+    width: fit-content;
 }
 
 .MMM-WS-Control.rectangle.no-item {
@@ -17,20 +16,31 @@
 }
 
 .MMM-WS-Control .device-item {
-    width: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 150px;
+    height: 150px;
     margin: 5px;
     border: 1px solid;
     border-radius: 2px;
+    font-size: 1.2rem;
 }
 
-.MMM-WS-Control .device-item .devices-item--active {
-    
+.MMM-WS-Control .device-item.devices-item--active {
+    background-color: #999999;
 }
 
-.MMM-WS-Control .devices-item-icon {
-
+.device-item.devices-item--active .devices-item-icon,
+.device-item.devices-item--active .devices-item-header {
+    color: black;
 }
 
 .MMM-WS-Control .devices-item-header {
 
+}
+
+.MMM-WS-Control--header {
+    font-size: 1.3rem;
 }

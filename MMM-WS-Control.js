@@ -1,10 +1,10 @@
 Module.register("MMM-WS-Control", {
 	config:null,
-	visableModules: [],
+	page_modules: [],
 	deviceData: [],
 	conn: null,
 	page: 0,
-	animationTime: 0,
+	totalPage: 0,
 
 	defaults: {
 		
@@ -19,7 +19,7 @@ Module.register("MMM-WS-Control", {
 	},
 
 	getScripts: function() {
-	return	[];
+		return	[];
 	}, 
 
 	getStyles: function() {
@@ -29,24 +29,30 @@ Module.register("MMM-WS-Control", {
 	notificationReceived: function(notification, payload, sender) {
 		if(notification==="ALL_MODULES_STARTED"){
 			this.sendSocketNotification("CONFIG",this.config);
-			this.getAnimationTime();
+		} else if (notification == "DOM_OBJECTS_CREATED") {
+			this.connectWS();
 		}
 		
-		if (notification == "EXT_PAGES-NUMBER_IS" || notification == "MMM-Screen-Control") {
-			if (notification == "EXT_PAGES-NUMBER_IS") {
-				this.page = payload.Actual;
-			}
-			
-			setTimeout(() => {
-				this.getModuleByPage();
+		if (notification === "MMM-WS-Control") {
+			if (payload.type === "PAGE_CHANGED") {
+				this.page = payload.page;
+				this.totalPage = payload.total_page;
+				this.page_modules = payload.page_modules;
+				
 				this.sendResponse("refresh");
-			}, this.animationTime);
-			
-		}
-
-		else if (notification === "DOM_OBJECTS_CREATED") {
-			this.connectWS();
-			this.sendNotification("EXT_PAGES-NUMBER");
+			} else if (payload.type === "MODULES_UPDATED") {
+				if (this.page === payload.page) {
+					this.totalPage = payload.total_page;
+					this.page_modules = payload.page_modules;
+				
+					this.sendResponse("accept");
+				}
+			} else if (payload.type === "DEVICES_REQUEST") {
+				if (payload.data !== undefined) {
+					this.sendResponse("request", "update devices", payload.data);
+				}
+				
+			}
 		}
 	},
 
@@ -56,20 +62,9 @@ Module.register("MMM-WS-Control", {
 			this.config.message = payload;
 		}	
 	},
-	
-	getAnimationTime: function() {
-		MM.getModules().forEach(module => {
-			if (module.name == "EXT-Pages") {
-				this.animationTime = this.animationTime < module.config.animationTime ? module.config.animationTime : this.animationTime;
-			} else if (module.name == "MMM-Screen-Control") {
-				this.animationTime = this.animationTime < module.config.speed ? module.config.speed : this.animationTime;
-			}
-		});
-		console.log(this.animationTime);
-	},
 
 	getHeader: function() {
-		return `<span class=MMM-WS-Control--header>Thiết bị</span>`;
+		return `<span class=MMM-WS-Control--header>Danh sách thiết bị</span>`;
 	},
 
 	getDom: function() {
@@ -127,28 +122,13 @@ Module.register("MMM-WS-Control", {
 				console.log("MMM-WS-Control receives a msg from server");
 				console.log(data);
 
-				if (data["action"] == "request") {
-					dataArr = data["data"];
-					Array.from(dataArr).forEach((m) => {
-						if (m.identifier !== undefined && m.hidden !== undefined) {
-							if (m.hidden === false) {
-								this.sendNotification("MMM-Screen-Control", {
-									type: "DISPLAY_MODULE",
-									identifier: m.identifier,
-								});
-							} else {
-								this.sendNotification("MMM-Screen-Control", {
-									type: "HIDE_MODULE",
-									identifier: m.identifier,
-								});
-							}
-						}
+				if (data["action"] == "request") {			
+					this.sendNotification("MMM-Screen-Control", {
+						type: "CHANGE_MODULES",
+						data: data["data"],
 					});
 					
-					this.getModuleByPage();
-					this.sendResponse("accept");
 				} else if (data["action"] == "update") {
-					this.getModuleByPage();
 					this.sendResponse("accept");
 				} else if (data["action"] == "accept") {
 					this.deviceData = data["data"]["devices"];
@@ -158,55 +138,24 @@ Module.register("MMM-WS-Control", {
 		}
 	},
 
-	getModuleByPage: function() {
-		this.visableModules = [];
-		let classStr = "";
-
-		MM.getModules().forEach(module => {
-			if (module.name === "EXT-Pages") {
-				extPageObj = module.config.pages[this.page];
-				extPageFixed = module.config.fixed;
-				classStr = extPageObj.join(' ') + ' ' + extPageFixed.join(' ');
-				classStr = classStr.trim();
-				return;
-			}
-		});
-
-		MM.getModules().forEach(module => {
-			let classList = module.data.classes.split(' ');
-			classList.forEach(cls => {
-				if (classStr.includes(cls)) {
-				let name = this.modifyName(module.data.name);				
-				this.visableModules.push({
-					"name": name,
-					"hidden": module.hidden,
-					"identifier": module.identifier,
-				});
-				return;
-			}
-			})
-			
-		});
-	},
-
-	modifyName: function(name) {
-		name = name.replace("MMM", '');
-		name = name.replace('-', ' ');
-		name = name.trim();
-
-		return name;
-	},
-
-	sendResponse: function(action, requestType="", data=[]) {
+	sendResponse: function(action, requestType="", data={}) {
 		if (action == "join" || action == "accept" || action == "refresh") {
-			js = this.payload(action, "", this.visableModules);
+			js = this.payload(action, "", {
+				page: this.page,
+				total_page: this.totalPage,
+				modules: this.page_modules,
+			});
 
 		} else if (action == "request") {
 			js = this.payload(action, requestType, data)
 		} else return;
 		
 		//send data to server
-		this.conn.send(js);
+		try {
+			this.conn.send(js);
+		} catch(e) {
+		}
+		
 	},
 
 	payload: function(action, requestType, data) {
